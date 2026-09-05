@@ -1,0 +1,13 @@
+// NOTE: Firebase Cloud Storage is completely DISABLED for the Firebase Spark (free) plan.
+// The WeatherSense application uses Cloud Firestore (database) and Firebase Authentication (admin login),
+// which are 100% free with no billing or credit card required.
+//
+// If Cloud Storage is ever enabled in the future, these rules enforce strict cross-service verification:
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

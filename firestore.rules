@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isRealAdmin() {
+      // Enforces cryptographically signed Firebase Custom Claim set only by Admin SDK
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // ── 1. Weather Reports ──
+    match /weather_reports/{reportId} {
+      // Public users can ONLY read documents with status == "VERIFIED".
+      // Admins (with custom claim admin == true) can read all documents.
+      allow read: if (resource.data.status == "VERIFIED") || isRealAdmin();
+
+      // Zero direct citizen or admin writes from client SDKs.
+      // All creation, moderation, and deletion strictly routed through FastAPI backend via Admin SDK.
+      allow write: if false;
+    }
+
+    // ── 2. Weather Observations (IMD / Open-Meteo telemetry) ──
+    match /weather_observations/{obsId} {
+      allow read: if true;
+      allow write: if false; // Written exclusively by backend Admin SDK
+    }
+
+    // ── 3. System Status ──
+    match /system_status/{serviceId} {
+      allow read: if true;
+      allow write: if false; // Written exclusively by backend Admin SDK
+    }
+
+    // ── 4. Social Reports ──
+    match /social_reports/{reportId} {
+      allow read: if isRealAdmin();
+      allow write: if false; // Ingested exclusively by backend Admin SDK
+    }
+
+    // ── 5. Analytics & Aggregates ──
+    match /analytics/{docId} {
+      allow read: if true;
+      allow write: if false; // Computed exclusively by backend Admin SDK
+    }
+
+    // ── 6. Admin Users ──
+    match /admin_users/{userId} {
+      // Strictly backend-managed. Normal users cannot modify their documents to escalate privileges.
+      allow read: if isRealAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow write: if false; // Managed exclusively by server-side Admin SDK
+    }
+
+    // ── Default Deny All Other Collections ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

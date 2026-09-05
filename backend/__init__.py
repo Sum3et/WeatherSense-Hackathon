@@ -1,0 +1,1 @@
+# WeatherSense — Empty init files for Python package resolution
